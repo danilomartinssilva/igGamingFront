@@ -17,11 +17,12 @@ import {
   ModalConfirmServiceService,
   ModalData,
 } from '../../services/modalConfirmService/modal-confirm-service.service';
+import { AddClientsComponent } from '../add-clients/add-clients.component';
 
 @Component({
   selector: 'app-clients',
   standalone: true,
-  imports: [DataTablesModule, CommonModule, NgIcon],
+  imports: [DataTablesModule, CommonModule, NgIcon, AddClientsComponent],
   viewProviders: [
     provideIcons({
       ionLockClosed,
