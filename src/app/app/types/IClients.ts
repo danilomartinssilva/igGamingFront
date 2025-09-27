@@ -8,3 +8,13 @@ export interface IClient {
   status: boolean;
   birthday: Date;
 }
+
+export interface IPage<T> {
+  content: T[];
+  totalElements: number;
+  totalPages: number;
+  size: number;
+  number: number;
+  first: boolean;
+  last: boolean;
+}

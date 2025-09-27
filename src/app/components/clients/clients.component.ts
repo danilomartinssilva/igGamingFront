@@ -1,86 +1,152 @@
 import { CommonModule } from '@angular/common';
-import { Component, inject, OnDestroy, OnInit, ViewChild } from '@angular/core';
-import { DataTableDirective, DataTablesModule } from 'angular-datatables';
-import { Api, Config } from 'datatables.net';
-import { Subject } from 'rxjs';
+import { Component, inject, OnDestroy, OnInit } from '@angular/core';
+import { Subscription } from 'rxjs';
 import { ClientService } from '../../services/clients/client.service';
-import { IClient } from '../../app/types/IClients';
+import { IClient, IPage } from '../../app/types/IClients';
 import { NgIcon, provideIcons } from '@ng-icons/core';
 import {
   ionLockClosed,
   ionLockOpen,
-  ionRemove,
   ionTrash,
   ionCheckmarkCircle,
+  ionChevronBack,
+  ionChevronForward,
 } from '@ng-icons/ionicons';
 import {
   ModalConfirmServiceService,
   ModalData,
 } from '../../services/modalConfirmService/modal-confirm-service.service';
 import { AddClientsComponent } from '../add-clients/add-clients.component';
+import { ClientFormModalServiceService } from '../../services/clientFormModalService/client-form-modal-service.service';
 
 @Component({
   selector: 'app-clients',
   standalone: true,
-  imports: [DataTablesModule, CommonModule, NgIcon, AddClientsComponent],
+  imports: [CommonModule, NgIcon, AddClientsComponent],
   viewProviders: [
     provideIcons({
       ionLockClosed,
       ionLockOpen,
-      ionRemove,
       ionTrash,
       ionCheckmarkCircle,
+      ionChevronBack,
+      ionChevronForward,
     }),
   ],
   templateUrl: './clients.component.html',
   styleUrl: './clients.component.css',
 })
 export class ClientsComponent implements OnInit, OnDestroy {
-  dtOptions: Config = {};
-
-  @ViewChild(DataTableDirective, { static: false })
-  dtElement!: DataTableDirective;
-
-  dtTrigger: Subject<any> = new Subject<any>();
   private readonly clientService = inject(ClientService);
+  private readonly clientFormModalService = inject(
+    ClientFormModalServiceService
+  );
   private readonly modalServiceConfirm = inject(ModalConfirmServiceService);
+
+  private clientsSubscription!: Subscription;
   private currentUserToDelete: IClient | null = null;
 
   clients: IClient[] = [];
+  paginationData: IPage<IClient> | null = null;
+
   loading: boolean = true;
   error: string = '';
+  showFormModal: boolean = false;
+  selectedClient: IClient | null = null;
+  formLoading: boolean = false;
+
+  currentPage: number = 0;
+  pageSize: number = 10;
+  pageSizes: number[] = [5, 20, 50, 100];
 
   ngOnInit(): void {
-    this.dtOptions = {
-      pagingType: 'full_numbers', // Estilo de paginação
-      destroy: true,
-      pageLength: 20, // Número de itens por página
-      language: {
-        url: '//cdn.datatables.net/plug-ins/1.13.7/i18n/pt-BR.json',
-      },
-    };
-    this.fetchData();
+    this.subscribeToClients();
+    this.subscribeToModals();
+  }
 
+  private subscribeToClients(): void {
+    this.clientsSubscription = this.clientService.clients$.subscribe({
+      next: (paginationData) => {
+        this.paginationData = paginationData;
+        this.clients = paginationData?.content || [];
+        this.loading = false;
+        this.error = '';
+      },
+      error: (error) => {
+        this.error = 'Erro ao carregar clientes';
+        this.loading = false;
+        console.error('Erro:', error);
+      },
+    });
+  }
+
+  private subscribeToModals(): void {
     this.modalServiceConfirm.getResult().subscribe((result) => {
       if (result && this.currentUserToDelete) {
         this.handleRemoveClient();
       }
     });
+
+    this.clientFormModalService.getModalState().subscribe((state) => {
+      this.showFormModal = state.show;
+      this.selectedClient = state.client || null;
+    });
   }
 
-  fetchData(): void {
+  changePage(page: number): void {
     this.loading = true;
-    this.clientService.getClients().subscribe({
-      next: (clients) => {
-        this.clients = clients;
+    this.currentPage = page;
+    this.clientService.getPaginatedClients(page, this.pageSize).subscribe({
+      error: (error) => {
         this.loading = false;
-        this.dtTrigger.next(null);
-      },
-      error: (err) => {
-        this.error = err;
-        this.loading = false;
+        console.error('Erro ao mudar página:', error);
       },
     });
+  }
+
+  changePageSize(size: number): void {
+    this.loading = true;
+    this.pageSize = size;
+    this.currentPage = 0;
+    this.clientService.getPaginatedClients(0, size).subscribe({
+      error: (error) => {
+        this.loading = false;
+        console.error('Erro ao mudar tamanho da página:', error);
+      },
+    });
+  }
+
+  nextPage(): void {
+    if (this.paginationData && !this.paginationData.last) {
+      this.changePage(this.currentPage + 1);
+    }
+  }
+
+  previousPage(): void {
+    if (this.currentPage > 0) {
+      this.changePage(this.currentPage - 1);
+    }
+  }
+
+  getPageNumbers(): number[] {
+    if (!this.paginationData) return [];
+
+    const totalPages = this.paginationData.totalPages;
+    const currentPage = this.currentPage;
+    const pages: number[] = [];
+
+    let start = Math.max(0, currentPage - 2);
+    let end = Math.min(totalPages, start + 5);
+
+    if (end - start < 5) {
+      start = Math.max(0, end - 5);
+    }
+
+    for (let i = start; i < end; i++) {
+      pages.push(i);
+    }
+
+    return pages;
   }
 
   handleRemoveClient(): void {
@@ -88,17 +154,17 @@ export class ClientsComponent implements OnInit, OnDestroy {
 
     this.clientService.removeClient(this.currentUserToDelete.id).subscribe({
       next: () => {
-        this.clients = this.clients.filter(
-          (client) => client.id !== this.currentUserToDelete?.id
-        );
-        this.rerender();
+        this.refreshData();
+      },
+      error: (error) => {
+        console.error('Erro ao excluir cliente:', error);
       },
     });
   }
 
   callModalConfirmRemove(client: IClient): void {
     const modalData: ModalData = {
-      message: `Deseja realmente excluir o usuário "${client.name}"?`,
+      message: `Deseja realmente excluir o cliente "${client.name}"?`,
       confirmText: 'Excluir',
       cancelText: 'Cancelar',
       type: 'danger',
@@ -108,14 +174,67 @@ export class ClientsComponent implements OnInit, OnDestroy {
     this.modalServiceConfirm.show(modalData);
   }
 
-  rerender(): void {
-    this.dtElement.dtInstance.then((dtInstance: Api) => {
-      dtInstance.destroy();
-      this.dtTrigger.next(null);
-    });
+  handleFormSubmit(clientData: Partial<IClient>): void {
+    this.formLoading = true;
+
+    if (this.selectedClient && this.selectedClient.id) {
+      this.clientService
+        .updateClient({ ...clientData, id: this.selectedClient.id })
+        .subscribe({
+          next: () => {
+            this.formLoading = false;
+            this.closeFormModal();
+            this.refreshData();
+          },
+          error: (error) => {
+            console.error('Erro ao atualizar cliente:', error);
+            this.formLoading = false;
+          },
+        });
+    } else {
+      this.clientService.addClient(clientData).subscribe({
+        next: () => {
+          this.formLoading = false;
+          this.closeFormModal();
+          this.refreshData();
+        },
+        error: (error) => {
+          console.error('Erro ao criar cliente:', error);
+          this.formLoading = false;
+        },
+      });
+    }
+  }
+
+  refreshData(): void {
+    this.loading = true;
+    this.clientService
+      .refreshClients(this.currentPage, this.pageSize)
+      .subscribe({
+        error: (error) => {
+          this.loading = false;
+          console.error('Erro ao atualizar dados:', error);
+        },
+      });
+  }
+
+  closeFormModal(): void {
+    this.showFormModal = false;
+    this.selectedClient = null;
+    this.clientFormModalService.close();
+  }
+
+  openCreateFormModal(): void {
+    this.clientFormModalService.open();
+  }
+
+  editClientForm(client: IClient): void {
+    this.clientFormModalService.open(client);
   }
 
   ngOnDestroy(): void {
-    this.dtTrigger.unsubscribe();
+    if (this.clientsSubscription) {
+      this.clientsSubscription.unsubscribe();
+    }
   }
 }

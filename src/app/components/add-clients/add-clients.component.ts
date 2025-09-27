@@ -57,9 +57,13 @@ export class AddClientsComponent implements OnInit, OnChanges {
   }
   private initForm(): void {
     this.clientForm = this.fb.group({
-      name: ['', [Validators.required, Validators.minLength(3)]],
-      email: ['', [Validators.required, Validators.email]],
-      birthday: ['', [Validators.required]],
+      name: ['Danilo Martins', [Validators.required, Validators.minLength(3)]],
+      email: ['xpto@example.com', [Validators.required, Validators.email]],
+      birthday: ['2022-01-01', [Validators.required]],
+      phone: [
+        '(11) 99999-9999',
+        [Validators.required, Validators.pattern(/^\(\d{2}\) \d{5}-\d{4}$/)],
+      ],
       balance: [0],
       status: [true],
     });
@@ -86,6 +90,7 @@ export class AddClientsComponent implements OnInit, OnChanges {
       const formData: Partial<IClient> = {
         ...formValue,
         birthday: new Date(formValue.birthday),
+        currency: 'BRL',
       };
 
       this.onSubmitForm.emit(formData);
