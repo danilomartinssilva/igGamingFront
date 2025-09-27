@@ -18,11 +18,19 @@ import {
 } from '../../services/modalConfirmService/modal-confirm-service.service';
 import { AddClientsComponent } from '../add-clients/add-clients.component';
 import { ClientFormModalServiceService } from '../../services/clientFormModalService/client-form-modal-service.service';
+import { FormsModule } from '@angular/forms';
+import { ClientsDetailModalComponentComponent } from '../clientsDetailModalCompoment/clients-detail-modal-component/clients-detail-modal-component.component';
 
 @Component({
   selector: 'app-clients',
   standalone: true,
-  imports: [CommonModule, NgIcon, AddClientsComponent],
+  imports: [
+    CommonModule,
+    NgIcon,
+    AddClientsComponent,
+    FormsModule,
+    ClientsDetailModalComponentComponent,
+  ],
   viewProviders: [
     provideIcons({
       ionLockClosed,
@@ -58,6 +66,9 @@ export class ClientsComponent implements OnInit, OnDestroy {
   currentPage: number = 0;
   pageSize: number = 10;
   pageSizes: number[] = [5, 20, 50, 100];
+
+  showDetailsModal: boolean = false;
+  detailsLoading: boolean = false;
 
   ngOnInit(): void {
     this.subscribeToClients();
@@ -232,6 +243,15 @@ export class ClientsComponent implements OnInit, OnDestroy {
     this.clientFormModalService.open(client);
   }
 
+  viewClientDetails(client: IClient) {
+    this.selectedClient = client;
+    this.showDetailsModal = true;
+  }
+
+  closeDetailsModal() {
+    this.showDetailsModal = false;
+    this.selectedClient = null;
+  }
   ngOnDestroy(): void {
     if (this.clientsSubscription) {
       this.clientsSubscription.unsubscribe();

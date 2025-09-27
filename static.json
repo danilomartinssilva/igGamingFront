@@ -1,0 +1,7 @@
+{
+  "root": "dist/igamingFront/browser",
+  "clean_urls": true,
+  "routes": {
+    "/**": "/index.html"
+  }
+}
