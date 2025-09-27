@@ -1,0 +1,51 @@
+<div class="container-fluid">
+  <table
+    datatable
+    [dtOptions]="dtOptions"
+    class="table table-bordered"
+    [dtTrigger]="dtTrigger"
+  >
+    <thead class="bg-dark table-white">
+      <tr>
+        <th>ID</th>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Birthday</th>
+        <th>Balance</th>
+        <th>Status</th>
+        <th>#Actions</th>
+      </tr>
+    </thead>
+
+    <tbody>
+      <tr *ngFor="let client of clients">
+        <td>{{ client.id }}</td>
+        <td>{{ client.name }}</td>
+        <td>{{ client.email }}</td>
+        <td>{{ client.birthday | date : "dd/MM/yyyy" }}</td>
+        <td>R$ {{ client.balance | number : "1.2-2" : "pt-BR" }}</td>
+        <td>
+          <ng-icon
+            name="ionLockOpen"
+            *ngIf="client.status"
+            class="text-primary"
+            style="font-size: 20px"
+          />
+          <ng-icon
+            name="ionLockClosed"
+            *ngIf="!client.status"
+            class="text-danger"
+            style="font-size: 20px"
+          />
+        </td>
+
+        <td>
+          <a class="btn btn-primary me-2" (click)="removeClient(client.id)"
+            >Edit</a
+          >
+          <a class="btn btn-danger" (click)="removeClient(client.id)">Delete</a>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
