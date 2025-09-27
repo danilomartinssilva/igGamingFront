@@ -13,6 +13,10 @@ import {
   ionTrash,
   ionCheckmarkCircle,
 } from '@ng-icons/ionicons';
+import {
+  ModalConfirmServiceService,
+  ModalData,
+} from '../../services/modalConfirmService/modal-confirm-service.service';
 
 @Component({
   selector: 'app-clients',
@@ -38,6 +42,9 @@ export class ClientsComponent implements OnInit, OnDestroy {
 
   dtTrigger: Subject<any> = new Subject<any>();
   private readonly clientService = inject(ClientService);
+  private readonly modalServiceConfirm = inject(ModalConfirmServiceService);
+  private currentUserToDelete: IClient | null = null;
+
   clients: IClient[] = [];
   loading: boolean = true;
   error: string = '';
@@ -52,9 +59,15 @@ export class ClientsComponent implements OnInit, OnDestroy {
       },
     };
     this.fetchData();
+
+    this.modalServiceConfirm.getResult().subscribe((result) => {
+      if (result && this.currentUserToDelete) {
+        this.handleRemoveClient();
+      }
+    });
   }
 
-  fetchData(isInitialLoad: boolean = false): void {
+  fetchData(): void {
     this.loading = true;
     this.clientService.getClients().subscribe({
       next: (clients) => {
@@ -69,13 +82,29 @@ export class ClientsComponent implements OnInit, OnDestroy {
     });
   }
 
-  removeClient(id: number): void {
-    this.clientService.removeClient(id).subscribe({
+  handleRemoveClient(): void {
+    if (this.currentUserToDelete?.id === undefined) return;
+
+    this.clientService.removeClient(this.currentUserToDelete.id).subscribe({
       next: () => {
-        this.clients = this.clients.filter((client) => client.id !== id);
+        this.clients = this.clients.filter(
+          (client) => client.id !== this.currentUserToDelete?.id
+        );
         this.rerender();
       },
     });
+  }
+
+  callModalConfirmRemove(client: IClient): void {
+    const modalData: ModalData = {
+      message: `Deseja realmente excluir o usuário "${client.name}"?`,
+      confirmText: 'Excluir',
+      cancelText: 'Cancelar',
+      type: 'danger',
+    };
+
+    this.currentUserToDelete = client;
+    this.modalServiceConfirm.show(modalData);
   }
 
   rerender(): void {

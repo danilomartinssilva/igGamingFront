@@ -1,4 +1,11 @@
 <div class="container-fluid">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h2 class="mb-0">Gerenciamento de Clientes</h2>
+    <button class="btn btn-primary mt-4" >
+      <ng-icon name="ionCheckmarkCircle" class="me-2"></ng-icon>
+      Cadastrar Novo Cliente
+    </button>
+  </div>
   <table
     datatable
     [dtOptions]="dtOptions"
@@ -40,12 +47,13 @@
         </td>
 
         <td>
-          <a class="btn btn-primary me-2" (click)="removeClient(client.id)"
+          <a class="btn btn-info me-2" (click)="callModalConfirmRemove(client)"
             >Edit</a
           >
-          <a class="btn btn-danger" (click)="removeClient(client.id)">Delete</a>
+          <a class="btn btn-danger" (click)="callModalConfirmRemove(client)">Delete</a>
         </td>
       </tr>
     </tbody>
   </table>
 </div>
+
